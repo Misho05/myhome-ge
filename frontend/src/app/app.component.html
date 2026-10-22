@@ -1,0 +1,673 @@
+<div class="min-h-screen flex flex-col">
+  <!-- Sticky Top Header -->
+  <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-6">
+        <button (click)="resetFilters()" class="flex items-center gap-2.5 text-left group focus:outline-none">
+          <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white shadow-sm group-hover:bg-brand-600 transition font-extrabold text-lg">
+            M
+          </div>
+          <div>
+            <div class="flex items-center gap-1">
+              <span class="font-extrabold text-xl tracking-tight text-slate-900">myhome</span>
+              <span class="text-xs font-bold px-1.5 py-0.5 rounded bg-brand-100 text-brand-700">.ge</span>
+            </div>
+            <p class="text-[11px] text-slate-500 -mt-0.5 hidden sm:block">Angular + NestJS პლატფორმა</p>
+          </div>
+        </button>
+
+        <nav class="hidden lg:flex items-center gap-1 text-sm font-medium text-slate-600">
+          <button
+            *ngFor="let d of DEAL_TYPES.slice(1)"
+            (click)="dealType = dealType === d.id ? 'ALL' : d.id; loadProperties()"
+            [class]="dealType === d.id ? 'px-3 py-1.5 rounded-lg bg-brand-50 text-brand-700 font-semibold transition' : 'px-3 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition'"
+          >
+            {{ d.label }}
+          </button>
+        </nav>
+      </div>
+
+      <!-- Right Controls -->
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <!-- Currency Switcher -->
+        <div class="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button
+            (click)="setCurrency('USD')"
+            [class]="currency === 'USD' ? 'px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-sm' : 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800'"
+          >
+            $ USD
+          </button>
+          <button
+            (click)="setCurrency('GEL')"
+            [class]="currency === 'GEL' ? 'px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-sm' : 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800'"
+          >
+            ₾ GEL
+          </button>
+        </div>
+
+        <!-- Favorites Filter Button -->
+        <button
+          (click)="showFavoritesOnly = !showFavoritesOnly"
+          [class]="showFavoritesOnly ? 'p-2.5 rounded-xl border bg-rose-50 border-rose-200 text-rose-600 flex items-center gap-1.5 text-sm font-bold' : 'p-2.5 rounded-xl border bg-white border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 text-sm font-bold'"
+          title="ფავორიტები"
+        >
+          <span>♥</span>
+          <span *ngIf="favoriteIds.length > 0" class="text-xs">{{ favoriteIds.length }}</span>
+        </button>
+
+        <!-- Add Listing Button -->
+        <button
+          (click)="openAddModal()"
+          class="inline-flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-3.5 py-2.5 rounded-xl shadow-sm transition"
+        >
+          <span>+ დამატება</span>
+        </button>
+
+        <!-- User Auth -->
+        <ng-container *ngIf="user; else guestTpl">
+          <div class="flex items-center gap-2 pl-1">
+            <div class="hidden md:block text-right">
+              <div class="text-xs font-bold text-slate-800 leading-tight">{{ user.name }}</div>
+              <div class="text-[11px] text-emerald-600 font-medium">{{ user.role === 'AGENT' ? 'აგენტი' : 'მომხმარებელი' }}</div>
+            </div>
+            <button
+              (click)="handleLogout()"
+              class="px-2.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition"
+            >
+              გასვლა
+            </button>
+          </div>
+        </ng-container>
+        <ng-template #guestTpl>
+          <button
+            (click)="showAuthModal = true"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold transition"
+          >
+            შესვლა
+          </button>
+        </ng-template>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero & Detailed Filtering Section -->
+  <section class="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white pt-6 pb-8 px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-5 gap-3">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            იპოვე შენი მომავალი სახლი მარტივად
+          </h1>
+          <p class="text-slate-300 text-sm mt-1">
+            გაფილტრე ბინები, კერძო სახლები, კომერციული ფართები და მიწის ნაკვეთები მთელი საქართველოს მასშტაბით
+          </p>
+        </div>
+
+        <!-- Deal Type Tabs -->
+        <div class="flex flex-wrap gap-1.5 bg-slate-800/90 p-1.5 rounded-2xl border border-slate-700">
+          <button
+            *ngFor="let d of DEAL_TYPES"
+            (click)="dealType = d.id; loadProperties()"
+            [class]="dealType === d.id ? 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-brand-500 text-white shadow transition' : 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-700/60 transition'"
+          >
+            {{ d.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Box -->
+      <div class="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-xl border border-slate-100">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+          <!-- Property Type -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">ქონების ტიპი</label>
+            <select
+              [(ngModel)]="propertyType"
+              (change)="loadProperties()"
+              class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option *ngFor="let t of PROPERTY_TYPES" [value]="t.id">{{ t.label }}</option>
+            </select>
+          </div>
+
+          <!-- City -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">ქალაქი / რეგიონი</label>
+            <select
+              [(ngModel)]="city"
+              (change)="onCityChange()"
+              class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="ALL">ყველა ქალაქი</option>
+              <option *ngFor="let c of cityKeys" [value]="c">{{ c }}</option>
+            </select>
+          </div>
+
+          <!-- District -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">უბანი / რაიონი</label>
+            <select
+              [(ngModel)]="district"
+              (change)="loadProperties()"
+              [disabled]="city === 'ALL'"
+              class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+            >
+              <option value="ALL">{{ city === 'ALL' ? 'ჯერ აირჩიეთ ქალაქი' : 'ყველა უბანი' }}</option>
+              <option *ngFor="let d of availableDistricts" [value]="d">{{ d }}</option>
+            </select>
+          </div>
+
+          <!-- Price Range -->
+          <div class="lg:col-span-3">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              ფასი ({{ currency === 'USD' ? '$' : '₾' }})
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="დან"
+                [(ngModel)]="minPrice"
+                (input)="loadProperties()"
+                class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm"
+              />
+              <input
+                type="number"
+                placeholder="მდე"
+                [(ngModel)]="maxPrice"
+                (input)="loadProperties()"
+                class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm"
+              />
+            </div>
+          </div>
+
+          <!-- Area Range -->
+          <div class="lg:col-span-3">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">ფართობი (მ²)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="მ² დან"
+                [(ngModel)]="minArea"
+                (input)="loadProperties()"
+                class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm"
+              />
+              <input
+                type="number"
+                placeholder="მ² მდე"
+                [(ngModel)]="maxArea"
+                (input)="loadProperties()"
+                class="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50/70 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Secondary Search & Rooms Bar -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div class="relative flex-1 min-w-[240px]">
+            <input
+              type="text"
+              placeholder="ძებნა სიტყვით, მისამართით ან ID კოდით (მაგ: 1849201)..."
+              [(ngModel)]="searchQuery"
+              (input)="loadProperties()"
+              class="w-full h-10 px-4 rounded-xl border border-slate-200 bg-slate-50/60 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-semibold text-slate-500 mr-1">ოთახები:</span>
+            <button
+              *ngFor="let r of ['ALL', '1', '2', '3', '4', '5']"
+              (click)="rooms = r; loadProperties()"
+              [class]="rooms === r ? 'h-9 px-3 rounded-xl text-xs font-bold border bg-slate-900 text-white border-slate-900' : 'h-9 px-3 rounded-xl text-xs font-bold border bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
+            >
+              {{ r === 'ALL' ? 'ყველა' : r === '5' ? '5+' : r }}
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              (click)="showAdvancedFilters = !showAdvancedFilters"
+              [class]="showAdvancedFilters ? 'h-10 px-3.5 rounded-xl border text-xs font-bold bg-brand-50 border-brand-300 text-brand-700' : 'h-10 px-3.5 rounded-xl border text-xs font-bold bg-white border-slate-200 text-slate-700 hover:bg-slate-50'"
+            >
+              დამატებითი ფილტრი
+            </button>
+            <button
+              (click)="resetFilters()"
+              class="h-10 px-3 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 text-xs font-semibold"
+            >
+              გასუფთავება
+            </button>
+          </div>
+        </div>
+
+        <!-- Expandable Advanced Filters -->
+        <div
+          *ngIf="showAdvancedFilters"
+          class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50/70 p-3.5 rounded-xl"
+        >
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">შენობის სტატუსი</label>
+            <select
+              [(ngModel)]="status"
+              (change)="loadProperties()"
+              class="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm"
+            >
+              <option *ngFor="let s of BUILDING_STATUSES" [value]="s.id">{{ s.label }}</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">მდგომარეობა / რემონტი</label>
+            <select
+              [(ngModel)]="condition"
+              (change)="loadProperties()"
+              class="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm"
+            >
+              <option *ngFor="let c of CONDITIONS" [value]="c.id">{{ c.label }}</option>
+            </select>
+          </div>
+
+          <div class="sm:col-span-2 flex flex-wrap items-center gap-4 pt-4">
+            <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-amber-600">
+              <input type="checkbox" [(ngModel)]="vipOnly" (change)="loadProperties()" class="w-4 h-4 rounded" />
+              <span>★ მხოლოდ VIP</span>
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+              <input type="checkbox" [(ngModel)]="hasBalcony" (change)="loadProperties()" class="w-4 h-4 rounded" />
+              <span>აივნით</span>
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+              <input type="checkbox" [(ngModel)]="hasParking" (change)="loadProperties()" class="w-4 h-4 rounded" />
+              <span>პარკინგით</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg sm:text-xl font-bold text-slate-900">
+          {{ showFavoritesOnly ? 'შენახული განცხადებები' : 'უძრავი ქონების განცხადებები' }}
+        </h2>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-100 text-brand-700">
+          {{ displayedProperties.length }} განცხადება
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500">სორტირება:</span>
+        <select
+          [(ngModel)]="sort"
+          (change)="loadProperties()"
+          class="h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700"
+        >
+          <option value="vip_newest">VIP და ახალი დამატებული</option>
+          <option value="newest">თარიღით (ახალი)</option>
+          <option value="price_asc">ფასი: ზრდადობით</option>
+          <option value="price_desc">ფასი: კლებადობით</option>
+          <option value="area_desc">ფართობი: კლებადობით</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Listings Grid -->
+    <div *ngIf="!loading && displayedProperties.length === 0" class="bg-white rounded-2xl border border-slate-200 p-12 text-center my-4">
+      <h3 class="text-lg font-bold text-slate-800">განცხადებები ვერ მოიძებნა</h3>
+      <p class="text-sm text-slate-500 mt-1">შეცვალეთ ფილტრაციის პარამეტრები ან გაასუფთავეთ ძებნის ველები.</p>
+      <button (click)="resetFilters()" class="mt-4 px-4 py-2 rounded-xl bg-brand-500 text-white text-sm font-semibold hover:bg-brand-600">
+        ფილტრის გასუფთავება
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <article
+        *ngFor="let prop of displayedProperties"
+        (click)="openDetails(prop)"
+        [class]="prop.isVip ? 'group bg-white rounded-2xl overflow-hidden transition-all duration-200 cursor-pointer flex flex-col border-2 border-amber-400/80 shadow-md hover:shadow-xl' : 'group bg-white rounded-2xl overflow-hidden transition-all duration-200 cursor-pointer flex flex-col border border-slate-200/90 shadow-sm hover:shadow-lg'"
+      >
+        <div class="relative h-52 overflow-hidden bg-slate-100">
+          <img
+            [src]="getImages(prop)[0]"
+            [alt]="prop.title"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+
+          <div class="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900/85 text-white backdrop-blur-sm">
+              {{ DEAL_TYPE_LABELS[prop.dealType] || prop.dealType }}
+            </span>
+            <span
+              *ngIf="prop.isVip"
+              class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow"
+            >
+              ★ {{ prop.vipType === 'SUPER_VIP' ? 'S-VIP' : prop.vipType === 'VIP_PLUS' ? 'VIP+' : 'VIP' }}
+            </span>
+          </div>
+
+          <button
+            (click)="toggleFavorite($event, prop.id)"
+            class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow hover:bg-white transition text-base"
+          >
+            <span [class]="isFavorite(prop.id) ? 'text-rose-500 font-bold' : 'text-slate-400'">♥</span>
+          </button>
+
+          <div class="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] font-semibold text-white">
+            <span class="px-2 py-0.5 rounded bg-black/60">ID: {{ prop.code }}</span>
+            <span class="px-2 py-0.5 rounded bg-black/60">{{ STATUS_LABELS[prop.status] || prop.status }}</span>
+          </div>
+        </div>
+
+        <div class="p-4 flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex items-baseline justify-between gap-2 mb-1.5">
+              <div class="text-xl font-extrabold text-slate-900">
+                {{ formatPrice(prop.priceUsd) }}
+                <span *ngIf="prop.dealType === 'RENT'" class="text-xs font-normal text-slate-500"> / თვე</span>
+                <span *ngIf="prop.dealType === 'DAILY'" class="text-xs font-normal text-slate-500"> / დღე</span>
+              </div>
+              <div class="text-xs font-semibold text-slate-400">
+                {{ formatSqmPrice(prop.priceUsd, prop.area) }}
+              </div>
+            </div>
+
+            <h3 class="font-bold text-slate-800 text-sm line-clamp-1 group-hover:text-brand-600 transition">
+              {{ prop.title }}
+            </h3>
+
+            <div class="text-xs text-slate-500 mt-1 truncate">
+              📍 {{ prop.city }}, {{ prop.district }} — {{ prop.address }}
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-600">
+            <div class="flex items-center gap-3">
+              <span>📐 {{ prop.area }} მ²</span>
+              <span *ngIf="prop.rooms > 0">🛏 {{ prop.rooms }} ოთ.</span>
+              <span *ngIf="prop.propertyType !== 'LAND'">🏢 {{ prop.floor }}/{{ prop.totalFloors }}</span>
+            </div>
+            <span class="text-[11px] text-slate-400">👁 {{ prop.views }}</span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <!-- Property Details Modal -->
+  <div
+    *ngIf="selectedProperty"
+    class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+    (click)="selectedProperty = null"
+  >
+    <div
+      class="bg-white rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border border-slate-200 my-auto max-h-[92vh] flex flex-col"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-brand-500 text-white">
+            {{ DEAL_TYPE_LABELS[selectedProperty.dealType] }}
+          </span>
+          <span class="text-xs font-bold text-slate-500">ID: {{ selectedProperty.code }}</span>
+          <span class="text-xs text-slate-400">•</span>
+          <span class="text-xs font-medium text-slate-600">{{ PROPERTY_TYPE_LABELS[selectedProperty.propertyType] }}</span>
+        </div>
+        <button (click)="selectedProperty = null" class="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 font-bold">✕</button>
+      </div>
+
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-6">
+        <div class="relative rounded-2xl overflow-hidden bg-slate-900 h-64 sm:h-96">
+          <img
+            [src]="getImages(selectedProperty)[activeImageIdx]"
+            [alt]="selectedProperty.title"
+            class="w-full h-full object-cover"
+          />
+          <ng-container *ngIf="getImages(selectedProperty).length > 1">
+            <button
+              (click)="prevImage(getImages(selectedProperty))"
+              class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/85 hover:bg-white flex items-center justify-center shadow font-bold"
+            >
+              ‹
+            </button>
+            <button
+              (click)="nextImage(getImages(selectedProperty))"
+              class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/85 hover:bg-white flex items-center justify-center shadow font-bold"
+            >
+              ›
+            </button>
+          </ng-container>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">{{ selectedProperty.title }}</h2>
+            <p class="text-sm text-slate-500 mt-1">
+              📍 {{ selectedProperty.city }}, {{ selectedProperty.district }}, {{ selectedProperty.address }}
+            </p>
+          </div>
+          <div class="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200/80 text-right shrink-0">
+            <div class="text-2xl font-extrabold text-brand-600">{{ formatPrice(selectedProperty.priceUsd) }}</div>
+            <div class="text-xs font-semibold text-slate-500">{{ formatSqmPrice(selectedProperty.priceUsd, selectedProperty.area) }}</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="text-xs text-slate-400 font-semibold">საერთო ფართი</div>
+            <div class="text-base font-extrabold text-slate-800 mt-0.5">{{ selectedProperty.area }} მ²</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="text-xs text-slate-400 font-semibold">ოთახები / საძინებელი</div>
+            <div class="text-base font-extrabold text-slate-800 mt-0.5">{{ selectedProperty.rooms }} ({{ selectedProperty.bedrooms }} საძ.)</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="text-xs text-slate-400 font-semibold">სართული</div>
+            <div class="text-base font-extrabold text-slate-800 mt-0.5">{{ selectedProperty.floor }} / {{ selectedProperty.totalFloors }}</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="text-xs text-slate-400 font-semibold">მდგომარეობა</div>
+            <div class="text-sm font-extrabold text-slate-800 mt-0.5">{{ CONDITION_LABELS[selectedProperty.condition] || selectedProperty.condition }}</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-2 space-y-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">აღწერა</h3>
+            <p class="text-slate-700 text-sm leading-relaxed">{{ selectedProperty.description }}</p>
+            <div class="pt-2 flex flex-wrap gap-2">
+              <span *ngIf="selectedProperty.hasBalcony" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold">✓ აივანი</span>
+              <span *ngIf="selectedProperty.hasParking" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold">✓ პარკინგი</span>
+              <span *ngIf="selectedProperty.hasElevator" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold">✓ ლიფტი</span>
+              <span *ngIf="selectedProperty.hasCentralHeating" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold">✓ ცენტრალური გათბობა</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-bold uppercase text-slate-400 mb-2">განმცხადებელი</div>
+              <div class="font-bold text-slate-900 text-base">{{ selectedProperty.user?.name }}</div>
+              <div class="text-xs text-brand-600 font-semibold mt-0.5">✓ ვერიფიცირებული განმცხადებელი</div>
+            </div>
+            <button
+              (click)="showPhone = true"
+              class="mt-4 w-full py-2.5 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm transition shadow-sm"
+            >
+              📞 {{ showPhone ? selectedProperty.user?.phone : (selectedProperty.user?.phone | slice:0:10) + ' ** **' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div
+    *ngIf="showAuthModal"
+    class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4"
+    (click)="showAuthModal = false"
+  >
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-extrabold text-slate-900">{{ authMode === 'login' ? 'ავტორიზაცია' : 'რეგისტრაცია' }}</h3>
+        <button (click)="showAuthModal = false" class="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 font-bold">✕</button>
+      </div>
+
+      <div class="mb-4 p-3 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-between gap-2">
+        <div class="text-xs text-brand-700">
+          <div class="font-bold">სწრაფი ტესტირება (Demo)</div>
+          <div>შედით სატესტო აგენტის ანგარიშით 1 კლიკით</div>
+        </div>
+        <button
+          type="button"
+          (click)="handleDemoLogin()"
+          [disabled]="authSubmitting"
+          class="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shrink-0"
+        >
+          Demo შესვლა
+        </button>
+      </div>
+
+      <div *ngIf="authError" class="mb-3 p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold">
+        {{ authError }}
+      </div>
+
+      <form (ngSubmit)="handleAuthSubmit()" class="space-y-3">
+        <ng-container *ngIf="authMode === 'register'">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">სახელი და გვარი</label>
+            <input type="text" name="authName" required [(ngModel)]="authName" class="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">ტელეფონის ნომერი</label>
+            <input type="text" name="authPhone" required [(ngModel)]="authPhone" class="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-sm" />
+          </div>
+        </ng-container>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">ელ-ფოსტა</label>
+          <input type="email" name="authEmail" required [(ngModel)]="authEmail" class="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">პაროლი</label>
+          <input type="password" name="authPassword" required [(ngModel)]="authPassword" class="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-sm" />
+        </div>
+
+        <button type="submit" [disabled]="authSubmitting" class="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm">
+          {{ authSubmitting ? 'მიმდინარეობს...' : authMode === 'login' ? 'შესვლა' : 'რეგისტრაცია' }}
+        </button>
+      </form>
+
+      <div class="mt-4 text-center text-xs text-slate-500">
+        <button (click)="authMode = authMode === 'login' ? 'register' : 'login'" class="text-brand-600 font-bold hover:underline">
+          {{ authMode === 'login' ? 'არ გაქვთ ანგარიში? დარეგისტრირდით' : 'უკვე გაქვთ ანგარიში? გაიარეთ ავტორიზაცია' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Property Modal -->
+  <div
+    *ngIf="showAddModal"
+    class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+    (click)="showAddModal = false"
+  >
+    <div
+      class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+        <h3 class="text-xl font-extrabold text-slate-900">ახალი განცხადების დამატება</h3>
+        <button (click)="showAddModal = false" class="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 font-bold">✕</button>
+      </div>
+
+      <div *ngIf="addError" class="mb-4 p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold">{{ addError }}</div>
+
+      <form (ngSubmit)="handleAddProperty()" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">გარიგების ტიპი</label>
+            <select name="dealType" [(ngModel)]="newProp.dealType" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm">
+              <option *ngFor="let d of DEAL_TYPES.slice(1)" [value]="d.id">{{ d.label }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">ქონების ტიპი</label>
+            <select name="propertyType" [(ngModel)]="newProp.propertyType" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm">
+              <option *ngFor="let p of PROPERTY_TYPES.slice(1)" [value]="p.id">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">განცხადების სათაური *</label>
+          <input type="text" name="title" required [(ngModel)]="newProp.title" placeholder="მაგ: იყიდება 3-ოთახიანი ბინა საბურთალოზე" class="w-full h-10 px-3.5 rounded-xl border border-slate-200 text-sm" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">ქალაქი *</label>
+            <select name="city" [(ngModel)]="newProp.city" (change)="onNewPropCityChange()" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm">
+              <option *ngFor="let c of cityKeys" [value]="c">{{ c }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">უბანი *</label>
+            <select name="district" [(ngModel)]="newProp.district" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm">
+              <option *ngFor="let d of newPropDistricts" [value]="d">{{ d }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">მისამართი</label>
+            <input type="text" name="address" [(ngModel)]="newProp.address" placeholder="ქუჩა და ნომერი" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">ფასი (USD $) *</label>
+            <input type="number" name="priceUsd" required [(ngModel)]="newProp.priceUsd" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">ფართობი (მ²) *</label>
+            <input type="number" name="area" required [(ngModel)]="newProp.area" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">ოთახები</label>
+            <input type="number" name="rooms" [(ngModel)]="newProp.rooms" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">სართული</label>
+            <input type="number" name="floor" [(ngModel)]="newProp.floor" class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">ფოტოს URL (არასავალდებულო)</label>
+          <input type="url" name="imageUrl" [(ngModel)]="newProp.imageUrl" placeholder="https://images.unsplash.com/..." class="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">დეტალური აღწერა</label>
+          <textarea rows="3" name="description" [(ngModel)]="newProp.description" class="w-full p-3 rounded-xl border border-slate-200 text-sm"></textarea>
+        </div>
+
+        <button type="submit" [disabled]="addSubmitting" class="w-full h-11 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm shadow">
+          {{ addSubmitting ? 'ინახება ბაზაში...' : 'განცხადების გამოქვეყნება' }}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-12 py-6 px-4 sm:px-6 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="font-bold text-slate-800">MyHome.ge Clone — Full-Stack (Angular 17 + NestJS + Prisma)</div>
+      <div>ყველა განცხადება და მომხმარებელი ინახება NestJS + SQLite მონაცემთა ბაზაში</div>
+    </div>
+  </footer>
+</div>
